@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+// TODO: Missing javadoc comments
 @Slf4j
 @Service
 public class DefaultTaskExecutionEngine {
@@ -34,6 +35,7 @@ public class DefaultTaskExecutionEngine {
         this.eventPublisher = eventPublisher;
     }
 
+    // TODO: Missing javadoc comments
     public Mono<TaskResult> executeTask(final Task task, TaskHandler handler) {
         if (handler == null) {
             return Mono.error(new IllegalArgumentException("Task handler cannot be null"));
@@ -50,7 +52,7 @@ public class DefaultTaskExecutionEngine {
     }
 
     private Mono<Task> markTaskStarted(final Task task) {
-        Task updatedTask = task.withStatus(TaskStatus.IN_PROGRESS);
+        final Task updatedTask = task.withStatus(TaskStatus.IN_PROGRESS);
         return taskRepository.save(TaskEntity.fromDomain(updatedTask))
                 .map(TaskEntity::toDomain)
                 .doOnSuccess(t -> eventPublisher.publishEvent(
@@ -107,7 +109,7 @@ public class DefaultTaskExecutionEngine {
             }
         }
 
-        String eventType = switch (result) {
+        final String eventType = switch (result) {
             case TaskResult.Success s -> TaskEvent.EventTypes.TASK_COMPLETED;
             case TaskResult.Failure f -> f.retryable() ?
                     TaskEvent.EventTypes.TASK_FAILED : TaskEvent.EventTypes.MOVED_TO_DLQ;

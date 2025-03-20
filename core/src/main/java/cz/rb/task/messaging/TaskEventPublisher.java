@@ -1,6 +1,7 @@
 package cz.rb.task.messaging;
 
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -19,6 +20,7 @@ public class TaskEventPublisher {
 
     private final KafkaTemplate<String, TaskEvent> kafkaTemplate;
 
+    @Setter
     @Value("${task.kafka.topic.events}")
     private String taskEventsTopic;
 

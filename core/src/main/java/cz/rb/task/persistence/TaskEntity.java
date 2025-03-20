@@ -62,24 +62,6 @@ public record TaskEntity(
     }
 
     /**
-     * Creates a new TaskEntity with updated status.
-     *
-     * @param newStatus The new status
-     * @return A new TaskEntity instance
-     */
-    public TaskEntity withStatus(TaskStatus newStatus) {
-        return new TaskEntity(
-                taskId,
-                type,
-                newStatus,
-                data,
-                retryCount,
-                createdAt,
-                Instant.now()
-        );
-    }
-
-    /**
      * Creates a new TaskEntity with incremented retry count.
      *
      * @return A new TaskEntity instance
