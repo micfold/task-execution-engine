@@ -15,15 +15,6 @@ The API module provides a reactive interface for submitting and monitoring tasks
 
 ### Interfaces
 
-#### TaskService
-Main entry point for task operations:
-```java
-public interface TaskService {
-    Mono<TaskResult> submitTask(Task task);
-    Mono<Task> getTaskById(String taskId);
-}
-```
-
 #### TaskHandler
 Interface for implementing domain-specific task handlers:
 ```java

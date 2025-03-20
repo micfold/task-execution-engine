@@ -66,11 +66,11 @@ public class DefaultTaskExecutionEngine {
         );
     }
 
-    private void logTaskSuccess(Task task) {
+    private void logTaskSuccess(final Task task) {
         log.info("Task executed successfully: {}", task.taskId());
     }
 
-    private void logTaskError(Task task, Throwable error) {
+    private void logTaskError(final Task task, Throwable error) {
         log.error("Task execution failed: {}, Error: {}", task.taskId(), error.getMessage());
     }
 
