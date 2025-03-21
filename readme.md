@@ -162,7 +162,7 @@ public class TEEConfiguration {
 }
 ```
 
-### Step 4: Use the Task Execution Engine
+### Step 4: Creating Task Handlers
 
 Now you can use the Task Execution Engine in your service:
 

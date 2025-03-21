@@ -16,11 +16,100 @@ The API module provides a reactive interface for submitting and monitoring tasks
 ### Interfaces
 
 #### TaskHandler
-Interface for implementing domain-specific task handlers:
+The TaskHandler is the key interface that connects your business logic to the TEE framework. 
+It's designed to be implemented by developers in their own services, not by the framework itself.
 ```java
 public interface TaskHandler {
-    String getTaskType();
-    Mono<TaskResult> execute(Task task);
+   // Identifies which task type this handler can process
+   String getTaskType();
+
+   // Contains the actual business logic for executing the task
+   Mono<TaskResult> execute(final Task task);
+}
+```
+### How it works? (Decentralized Approach)
+Since TEE ought to be a framework without a central database or running server, here's how it works:
+
+1. **Each service manages its own tasks**: Services using TEE would have their own database tables for tasks, 
+created using the schema management tools provided by TEE.
+2. **Local task execution**: When a service wants to execute a task asynchronously:
+- It creates a Task object
+- Persists it in its own database
+- Uses the TEE execution engine to process it
+3. **Handler registration**: Each service registers its own TaskHandler with the local TaskHandlerRegistry:
+```java
+@PostConstruct
+public void registerHandlers() {
+    handlerRegistry.registerHandler(new DocumentProcessingHandler());
+    handlerRegistry.registerHandler(new ContractRegistrationHanlder());
+    handlerRegistry.registerHandler(new PaymentProcessingHandler());
+}
+```
+4. **Execution flow**: When the service needs to execute a task:
+- It create a Task
+- The DefaultTaskExecutionEngine finds the appropriate handler from the registry
+- It calls the handler's execute method
+- The engine handles retries, state management, and error handling
+
+### Example: Decentralized Implementation
+```java
+@Service
+@RequiredArgsConstructor
+public class ClientOnboardingService {
+    private final DefaultTaskExecutionEngine executionEngine;
+    private final TaskHandlerRegistry handlerRegistry;
+    
+    // All handlers would be local to this service
+    private final PortfolioCreationHandler portfolioHandler;
+    private final ContractRegistrationHandler contractHandler;
+    private final MultichannelEnablementHandler channelHandler;
+    
+    @PostConstruct
+    public void registerHandlers() {
+        // Register handlers with the local registry
+        handlerRegistry.registerHandler(portfolioHandler);
+        handlerRegistry.registerHandler(contractHandler);
+        handlerRegistry.registerHandler(channelHandler);
+    }
+    
+    public Mono<String> startOnboardingProcess(final String clientId, Map<String, Object> contractDetails) {
+        // Create tasks and submit them to the local execution engine
+        final Task portfolioTask = createPortfolioTask(clientId);
+        
+        // The execution engine persists tasks in this service's database
+        // and processes them using the locally registered handlers
+        return executionEngine.executeTask(portfolioTask, portfolioHandler)
+                .flatMap(result -> {
+                    if (result instanceof TaskResult.Success) {
+                        // Continue with next task
+                        return executionEngine.executeTask(
+                                createContractTask(clientId, contractDetails),
+                                contractHandler
+                        );
+                    }
+                    return Mono.just(result);
+                })
+                .flatMap(result -> {
+                    if (result instanceof TaskResult.Success) {
+                        // Continue with final task
+                        return executionEngine.executeTask(
+                                createMultichannelTask(clientId),
+                                channelHandler
+                        );
+                    }
+                    return Mono.just(result);
+                })
+                .map(result -> clientId);
+    }
+    
+    // Helper methods to create the tasks
+    private Task createPortfolioTask(final String clientId) {
+        return TaskBuilder.forType("PORTFOLIO_CREATION")
+                .withData("clientId", clientId)
+                .build();
+    }
+    
+    // Other helper methods...
 }
 ```
 

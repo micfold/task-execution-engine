@@ -9,6 +9,7 @@ import reactor.test.StepVerifier;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -65,7 +66,7 @@ class TaskHandlerContractTest {
         }
 
         @Override
-        public Mono<TaskResult> execute(Task task) {
+        public Mono<TaskResult> execute(final Task task) {
             return Mono.just(new TaskResult.Success(
                     task.taskId(),
                     Map.of("executed", true)
