@@ -1,0 +1,18 @@
+spring:
+  r2dbc:
+    # Use an in-memory H2 database for testing
+    url: r2dbc:h2:mem:///test;DB_CLOSE_DELAY=-1;
+    username: sa
+    password:
+
+  # R2DBC initialization
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-h2.sql
+
+logging:
+  level:
+    org.springframework: DEBUG
+    org.springframework.test: DEBUG
+    org.springframework.boot.test: DEBUG
