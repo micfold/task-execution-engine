@@ -21,6 +21,7 @@ public class SchemaOptions {
      * Default is "public".
      */
     @Builder.Default
+    // TODO: Create a property
     private String schemaName = "public";
 
     /**
@@ -29,6 +30,7 @@ public class SchemaOptions {
      * Default is empty string (no prefix).
      */
     @Builder.Default
+    // TODO: Create a property
     private String tablePrefix = "";
 
     /**
@@ -36,6 +38,7 @@ public class SchemaOptions {
      * Default is "tasks".
      */
     @Builder.Default
+    // TODO: Create a property
     private String tasksTableName = "tasks";
 
     /**
@@ -43,6 +46,7 @@ public class SchemaOptions {
      * Default is true.
      */
     @Builder.Default
+    // TODO: Create a property
     private boolean enableConstraints = true;
 
     /**
@@ -50,5 +54,6 @@ public class SchemaOptions {
      * Use with caution! Default is false.
      */
     @Builder.Default
+    // TODO: Create a property
     private boolean dropExistingTables = false;
 }

@@ -133,7 +133,7 @@ class TaskAdminControllerTest {
     void retryTask_success() {
         // Given
         final String taskId = "failed-task";
-        TaskResult.Success result = new TaskResult.Success(taskId, Map.of("status", "retried"));
+        final TaskResult.Success result = new TaskResult.Success(taskId, Map.of("status", "retried"));
 
         when(taskAdminService.retryTask(eq(taskId))).thenReturn(Mono.just(result));
 
@@ -172,6 +172,114 @@ class TaskAdminControllerTest {
                 .jsonPath("$.message").isEqualTo("Cannot retry task");
 
         verify(taskAdminService).retryTask(taskId);
+    }
+
+    @Test
+    @DisplayName("Should return tasks for specific user ID")
+    void getTaskListByUserId() {
+        // Given
+        final String userId = "user-123";
+        final Task task1 = createSampleTask("task-1", "EMAIL_NOTIFICATION", TaskStatus.COMPLETED);
+        final Task task2 = createSampleTask("task-2", "DOCUMENT_PROCESSING", TaskStatus.PENDING);
+
+        when(taskAdminService.getTasksByUserId(
+                eq(userId),
+                isNull(),
+                eq(0),
+                eq(20),
+                eq("createdAt"),
+                eq("desc")))
+                .thenReturn(Flux.just(task1, task2));
+
+        // When & Then
+        webClient.get()
+                .uri("/api/v1/admin/tasks/user/{userId}", userId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(Task.class)
+                .hasSize(2)
+                .contains(task1, task2);
+
+        verify(taskAdminService).getTasksByUserId(
+                eq(userId),
+                isNull(),
+                eq(0),
+                eq(20),
+                eq("createdAt"),
+                eq("desc"));
+    }
+
+    @Test
+    @DisplayName("Should filter tasks by user ID and status")
+    void getTaskListByUserId_withStatusFilter() {
+        // Given
+        final String userId = "user-123";
+        final TaskStatus status = TaskStatus.COMPLETED;
+        final Task task = createSampleTask("task-1", "EMAIL_NOTIFICATION", TaskStatus.COMPLETED);
+
+        when(taskAdminService.getTasksByUserId(
+                eq(userId),
+                eq(status),
+                eq(0),
+                eq(20),
+                eq("createdAt"),
+                eq("desc")))
+                .thenReturn(Flux.just(task));
+
+        // When & Then
+        webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/admin/tasks/user/{userId}")
+                        .queryParam("status", "COMPLETED")
+                        .build(userId))
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(Task.class)
+                .hasSize(1)
+                .contains(task);
+
+        verify(taskAdminService).getTasksByUserId(
+                eq(userId),
+                eq(status),
+                eq(0),
+                eq(20),
+                eq("createdAt"),
+                eq("desc"));
+    }
+
+    @Test
+    @DisplayName("Should return empty list when no tasks found for user")
+    void getTaskListByUserId_noTasks() {
+        // Given
+        final String userId = "user-without-tasks";
+
+        when(taskAdminService.getTasksByUserId(
+                eq(userId),
+                isNull(),
+                anyInt(),
+                anyInt(),
+                anyString(),
+                anyString()))
+                .thenReturn(Flux.empty());
+
+        // When & Then
+        webClient.get()
+                .uri("/api/v1/admin/tasks/user/{userId}", userId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(Task.class)
+                .hasSize(0);
+
+        verify(taskAdminService).getTasksByUserId(
+                eq(userId),
+                isNull(),
+                eq(0),
+                eq(20),
+                eq("createdAt"),
+                eq("desc"));
     }
 
     @Test

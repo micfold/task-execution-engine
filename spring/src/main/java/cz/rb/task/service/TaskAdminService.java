@@ -118,6 +118,73 @@ public class TaskAdminService {
     }
 
     /**
+     * Retrieves tasks associated with a specific user ID.
+     * Searches through task data for user ID references.
+     *
+     * @param userId The user ID to find tasks for
+     * @param status Optional status filter
+     * @param page Page number (0-based)
+     * @param size Page size
+     * @param sortBy Field to sort by
+     * @param sortDir Sort direction (asc or desc)
+     * @return Flux of tasks associated with the user
+     */
+    public Flux<Task> getTasksByUserId(
+            final String userId,
+            final TaskStatus status,
+            final int page,
+            final int size,
+            final String sortBy,
+            final String sortDir
+    ) {
+        log.debug("Finding tasks for user ID: {}, status: {}, page: {}, size: {}",
+                userId, status, page, size);
+
+        if (userId == null || userId.isBlank()) {
+            return Flux.empty();
+        }
+
+        // Validate and default sorting
+        final String validSortBy = validateSortField(sortBy);
+        final Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        final PageRequest pageRequest = PageRequest.of(page, size, direction, validSortBy);
+
+        // Get base query results based on status filter
+        Flux<TaskEntity> taskEntities;
+        if (status != null) {
+            taskEntities = taskRepository.findByStatus(status, pageRequest);
+        } else {
+            taskEntities = taskRepository.findAllWithPagination(pageRequest);
+        }
+
+        // Filter by user ID in task data
+        return taskEntities
+                .filter(entity -> containsUserId(entity.data(), userId))
+                .map(TaskEntity::toDomain);
+    }
+
+    /**
+     * Helper method to check if task data contains a specific user ID.
+     */
+    private boolean containsUserId(Map<String, Object> data, String userId) {
+        if (data == null) {
+            return false;
+        }
+
+        // Check common user ID fields
+        return data.entrySet().stream()
+                .anyMatch(entry -> {
+                    String key = entry.getKey().toLowerCase();
+                    Object value = entry.getValue();
+
+                    return (key.contains("userid") || key.equals("user_id") || key.equals("uid") ||
+                            key.equals("user") || key.endsWith("userid")) &&
+                            value != null &&
+                            value.toString().equals(userId);
+                });
+    }
+
+    /**
      * Retries a failed task.
      *
      * @param taskId The task ID

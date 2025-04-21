@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -104,6 +105,85 @@ class TaskManagementEndpointTest {
                     return true;
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("Should return task list for specific user ID")
+    void getTaskListByUserId_success() {
+        // Given
+        final String userId = "user-123";
+        final Instant createdAt = Instant.now().minus(30, ChronoUnit.MINUTES);
+        final Instant updatedAt = Instant.now().minus(5, ChronoUnit.MINUTES);
+
+        final Task task1 = Task.builder()
+                .taskId("task-1")
+                .type("DOCUMENT_PROCESSING")
+                .status(TaskStatus.COMPLETED)
+                .data(Map.of("userId", userId, "documentId", "doc-123"))
+                .retryCount(0)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
+                .build();
+
+        final Task task2 = Task.builder()
+                .taskId("task-2")
+                .type("EMAIL_NOTIFICATION")
+                .status(TaskStatus.PENDING)
+                .data(Map.of("userId", userId, "email", "user@example.com"))
+                .retryCount(0)
+                .createdAt(createdAt)
+                .updatedAt(createdAt) // Same as created for pending
+                .build();
+
+        when(taskAdminService.getTasksByUserId(eq(userId), isNull(), eq(0), eq(100), eq("createdAt"), eq("desc")))
+                .thenReturn(Flux.just(task1, task2));
+
+        // When
+        final Flux<Map<String, Object>> result = endpoint.getTaskListByUserId(userId);
+
+        // Then
+        StepVerifier.create(result)
+                .expectNextMatches(details -> {
+                    assertThat(details.get("id")).isEqualTo("task-1");
+                    assertThat(details.get("type")).isEqualTo("DOCUMENT_PROCESSING");
+                    assertThat(details.get("status")).isEqualTo(TaskStatus.COMPLETED);
+                    // Should have execution time for completed task
+                    assertThat(details.containsKey("executionTimeMs")).isTrue();
+                    assertThat(details.containsKey("executionTimeFormatted")).isTrue();
+                    return true;
+                })
+                .expectNextMatches(details -> {
+                    assertThat(details.get("id")).isEqualTo("task-2");
+                    assertThat(details.get("type")).isEqualTo("EMAIL_NOTIFICATION");
+                    assertThat(details.get("status")).isEqualTo(TaskStatus.PENDING);
+                    // Should not have execution time for pending tasks
+                    assertThat(details.containsKey("executionTimeMs")).isFalse();
+                    assertThat(details.containsKey("executionTimeFormatted")).isFalse();
+                    return true;
+                })
+                .verifyComplete();
+
+        verify(taskAdminService).getTasksByUserId(eq(userId), isNull(), eq(0), eq(100), eq("createdAt"), eq("desc"));
+    }
+
+    @Test
+    @DisplayName("Should return empty result when no tasks found for user")
+    void getTaskListByUserId_noTasks() {
+        // Given
+        final String userId = "user-without-tasks";
+
+        when(taskAdminService.getTasksByUserId(eq(userId), isNull(), anyInt(), anyInt(), anyString(), anyString()))
+                .thenReturn(Flux.empty());
+
+        // When
+        final Flux<Map<String, Object>> result = endpoint.getTaskListByUserId(userId);
+
+        // Then
+        StepVerifier.create(result)
+                .expectComplete()
+                .verify();
+
+        verify(taskAdminService).getTasksByUserId(eq(userId), isNull(), eq(0), eq(100), eq("createdAt"), eq("desc"));
     }
 
     @Test

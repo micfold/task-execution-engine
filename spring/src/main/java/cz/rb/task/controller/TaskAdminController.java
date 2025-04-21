@@ -78,6 +78,32 @@ public class TaskAdminController {
     }
 
     /**
+     * Retrieves all tasks associated with a specific user.
+     *
+     * @param userId The user ID to retrieve tasks for
+     * @param status Optional task status filter
+     * @param page Page number (0-based)
+     * @param size Page size
+     * @param sortBy Field to sort by
+     * @param sortDir Sort direction (asc or desc)
+     * @return Flux of tasks associated with the user
+     */
+    @GetMapping("/user/{userId}")
+    public Flux<Task> getTaskListByUserId(
+            @PathVariable(name = "userId") String userId,
+            @RequestParam(name = "status", required = false) TaskStatus status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy,
+            @RequestParam(name = "sortDir", defaultValue = "desc") String sortDir
+    ) {
+        log.info("Fetching tasks for user: {}, status: {}, page: {}, size: {}",
+                userId, status, page, size);
+
+        return taskAdminService.getTasksByUserId(userId, status, page, size, sortBy, sortDir);
+    }
+
+    /**
      * Manually retries a failed task.
      *
      * @param id Task ID to retry

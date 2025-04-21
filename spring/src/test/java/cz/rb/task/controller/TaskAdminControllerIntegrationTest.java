@@ -46,8 +46,8 @@ class TaskAdminControllerIntegrationTest {
     @DisplayName("Should list tasks with advanced filtering")
     void listTasksWithFilters() {
         // Given
-        final Task task1 = createSampleTask("task-1", "DOCUMENT_PROCESSING", TaskStatus.COMPLETED);
-        final Task task2 = createSampleTask("task-2", "DOCUMENT_PROCESSING", TaskStatus.FAILED);
+        final Task task1 = createSampleTask("task-1", TaskStatus.COMPLETED);
+        final Task task2 = createSampleTask("task-2", TaskStatus.FAILED);
 
         when(taskAdminService.findTasks(
                 eq("client-123"),
@@ -102,7 +102,7 @@ class TaskAdminControllerIntegrationTest {
     @DisplayName("Should get task count statistics by type")
     void getTaskCounts() {
         // Given
-        Map<TaskStatus, Long> statusCounts = Map.of(
+        final Map<TaskStatus, Long> statusCounts = Map.of(
                 TaskStatus.PENDING, 5L,
                 TaskStatus.IN_PROGRESS, 2L,
                 TaskStatus.COMPLETED, 15L,
@@ -136,8 +136,8 @@ class TaskAdminControllerIntegrationTest {
     @DisplayName("Should retry a failed task")
     void retryTask() {
         // Given
-        String taskId = "failed-task-id";
-        TaskResult.Success successResult = new TaskResult.Success(
+        final String taskId = "failed-task-id";
+        final TaskResult.Success successResult = new TaskResult.Success(
                 taskId, Map.of("status", "retried"));
 
         when(taskAdminService.retryTask(taskId)).thenReturn(Mono.just(successResult));
@@ -160,7 +160,7 @@ class TaskAdminControllerIntegrationTest {
     @DisplayName("Should handle not found when fetching task details")
     void getTaskDetails_notFound() {
         // Given
-        String taskId = "non-existent";
+        final String taskId = "non-existent";
         when(taskAdminService.getTaskById(taskId)).thenReturn(Mono.empty());
 
         // When/Then
@@ -176,7 +176,7 @@ class TaskAdminControllerIntegrationTest {
     @DisplayName("Should handle retry failure due to service error")
     void retryTask_serviceError() {
         // Given
-        String taskId = "failed-task-id";
+        final String taskId = "failed-task-id";
         when(taskAdminService.retryTask(taskId))
                 .thenReturn(Mono.error(new IllegalStateException("Task not in FAILED status")));
 
@@ -190,11 +190,14 @@ class TaskAdminControllerIntegrationTest {
         verify(taskAdminService).retryTask(taskId);
     }
 
-    private Task createSampleTask(String id, String type, TaskStatus status) {
-        Instant now = Instant.now();
+    private Task createSampleTask(final String id,
+                                  final TaskStatus status) {
+
+        final Instant now = Instant.now();
+
         return Task.builder()
                 .taskId(id)
-                .type(type)
+                .type("DOCUMENT_PROCESSING")
                 .status(status)
                 .data(Map.of("clientId", "client-123", "documentId", "doc-456"))
                 .retryCount(status == TaskStatus.FAILED ? 2 : 0)

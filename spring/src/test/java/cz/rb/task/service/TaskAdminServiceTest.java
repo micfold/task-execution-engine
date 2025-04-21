@@ -278,6 +278,126 @@ class TaskAdminServiceTest {
     }
 
     @Test
+    @DisplayName("Should return tasks associated with user ID")
+    void getTasksByUserId_success() {
+        // Given
+        final String userId = "user-123";
+        final TaskStatus status = TaskStatus.PENDING;
+        int page = 0;
+        int size = 10;
+
+        final TaskEntity task1 = createTaskEntity("task-1", "DOCUMENT_PROCESSING",
+                Map.of("userId", userId, "documentId", "doc-1"), TaskStatus.PENDING);
+        final TaskEntity task2 = createTaskEntity("task-2", "EMAIL_NOTIFICATION",
+                Map.of("userId", userId, "recipientEmail", "user@example.com"), TaskStatus.PENDING);
+        final TaskEntity task3 = createTaskEntity("task-3", "DATA_IMPORT",
+                Map.of("userIdentifier", "different-user"), TaskStatus.PENDING);
+
+        when(taskRepository.findByStatus(eq(status), any(PageRequest.class)))
+                .thenReturn(Flux.just(task1, task2, task3));
+
+        // When
+        final Flux<Task> result = taskAdminService.getTasksByUserId(userId, status, page, size, "createdAt", "desc");
+
+        // Then
+        StepVerifier.create(result)
+                .expectNextMatches(task -> task.taskId().equals("task-1") &&
+                        task.data().get("userId").equals(userId))
+                .expectNextMatches(task -> task.taskId().equals("task-2") &&
+                        task.data().get("userId").equals(userId))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should handle different user ID field names")
+    void getTasksByUserId_differentFieldNames() {
+        // Given
+        final String userId = "user-123";
+
+        final TaskEntity task1 = createTaskEntity("task-1", "DOCUMENT_PROCESSING",
+                Map.of("user_id", userId), TaskStatus.COMPLETED);
+        final TaskEntity task2 = createTaskEntity("task-2", "EMAIL_NOTIFICATION",
+                Map.of("uid", userId), TaskStatus.PENDING);
+        final TaskEntity task3 = createTaskEntity("task-3", "PAYMENT_PROCESSING",
+                Map.of("customerUserid", userId), TaskStatus.IN_PROGRESS);
+
+        when(taskRepository.findAllWithPagination(any(PageRequest.class)))
+                .thenReturn(Flux.just(task1, task2, task3));
+
+        // When
+        final Flux<Task> result = taskAdminService.getTasksByUserId(userId, null, 0, 20, "createdAt", "desc");
+
+        // Then
+        StepVerifier.create(result)
+                .expectNextCount(3)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should return empty flux when user ID not found")
+    void getTasksByUserId_userNotFound() {
+        // Given
+        final String userId = "non-existent";
+
+        final TaskEntity task1 = createTaskEntity("task-1", "DOCUMENT_PROCESSING",
+                Map.of("userId", "other-user"), TaskStatus.COMPLETED);
+        final TaskEntity task2 = createTaskEntity("task-2", "EMAIL_NOTIFICATION",
+                Map.of("uid", "another-user"), TaskStatus.PENDING);
+
+        when(taskRepository.findAllWithPagination(any(PageRequest.class)))
+                .thenReturn(Flux.just(task1, task2));
+
+        // When
+        final Flux<Task> result = taskAdminService.getTasksByUserId(userId, null, 0, 20, "createdAt", "desc");
+
+        // Then
+        StepVerifier.create(result)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should handle null user ID")
+    void getTasksByUserId_nullUserId() {
+        // When
+        final Flux<Task> result = taskAdminService.getTasksByUserId(null, null, 0, 20, "createdAt", "desc");
+
+        // Then
+        StepVerifier.create(result)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    @DisplayName("Should filter by both user ID and status")
+    void getTasksByUserId_withStatusFilter() {
+        // Given
+        final String userId = "user-123";
+        final TaskStatus status = TaskStatus.COMPLETED;
+
+        final TaskEntity task1 = createTaskEntity("task-1", "DOCUMENT_PROCESSING",
+                Map.of("userId", userId), TaskStatus.COMPLETED);
+        final TaskEntity task2 = createTaskEntity("task-2", "EMAIL_NOTIFICATION",
+                Map.of("userId", userId), TaskStatus.PENDING);
+        final TaskEntity task3 = createTaskEntity("task-3", "DATA_IMPORT",
+                Map.of("userId", userId), TaskStatus.COMPLETED);
+
+        when(taskRepository.findByStatus(eq(status), any(PageRequest.class)))
+                .thenReturn(Flux.just(task1, task3));
+
+        // When
+        final Flux<Task> result = taskAdminService.getTasksByUserId(userId, status, 0, 10, "createdAt", "desc");
+
+        // Then
+        StepVerifier.create(result)
+                .expectNextCount(2)
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
     @DisplayName("Should update task")
     void updateTask() {
         // Given
@@ -323,6 +443,20 @@ class TaskAdminServiceTest {
                 .createdAt(now.minus(30, ChronoUnit.MINUTES))
                 .updatedAt(now)
                 .build();
+    }
+
+    private TaskEntity createTaskEntity(String id, String type, Map<String, Object> data, TaskStatus status) {
+        final Task task = Task.builder()
+                .taskId(id)
+                .type(type)
+                .data(data)
+                .status(status)
+                .retryCount(0)
+                .createdAt(Instant.now().minus(1, ChronoUnit.HOURS))
+                .updatedAt(Instant.now().minus(30, ChronoUnit.MINUTES))
+                .build();
+
+        return TaskEntity.fromDomain(task);
     }
 }
 
